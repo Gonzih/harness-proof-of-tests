@@ -388,8 +388,128 @@ Fulcio/GitHub in a monitor-visible way.
    PoT's job is to keep these interchangeable behind the same attestation
    format, so a repo tightens its requirement with one line of policy.
 
+## 13. Identity and standing (trust score)
+
+The tier table in §7.1 assumed "reputation" exists. This section defines it.
+**Standing** is a per-identity trust score that gates how much verification a
+claim gets: high standing → low spot-check rate → cheap merges. It is the
+protocol's memory.
+
+### 13.1 One identity, two signature chains
+
+A PoT identity is a durable public identity that both **authors code** and
+**attests tests**. Two chains converge on it:
+
+- **Authorship**: GPG- or SSH-signed commits. The signing key is published on
+  the identity's GitHub account (verifiable via the public
+  `github.com/<user>.gpg_keys` / `.keys` endpoints), so commit signatures are
+  checkable against the account without any new infrastructure.
+- **Attestation**: Sigstore keyless (OIDC → the same GitHub account) or the
+  same GPG key in the DSSE envelope (offline-friendly fallback, paired with an
+  OpenTimestamps stamp).
+
+Both chains resolving to one account is what lets standing mean something:
+the entity gaining trust for testing is the same entity whose code you're
+merging. A signed commit proves *who wrote it*; a signed attestation proves
+*who claims it's green*; standing prices *how much you believe them*.
+
+Key lifecycle is inherited, not reinvented: GitHub key registration dates,
+revocation, and rotation apply; a claim signed by a key not registered to the
+account at signing time (per Rekor's timestamp) is invalid.
+
+### 13.2 Standing is computed, never stored
+
+Standing is a **pure deterministic function over public data**: the Rekor
+log, git histories of participating repos, and published fraud proofs. There
+is no standing server, no token, no oracle — any repo, bot, or contributor
+recomputes any identity's standing from the same inputs and gets the same
+number. (Trustix logic applied to reputation: don't trust the mapping, make
+the mapping recomputable.)
+
+Scoring events, by design intent:
+
+| Event | Effect | Why |
+|---|---|---|
+| Attestation later **spot-checked and matched** | strong + | verified truth — the only heavyweight earner |
+| Attestation **corroborated** by an independent identity | weak + | cheap corroboration, discounted for possible collusion |
+| **Merged PR**: GPG-signed authorship + attestation + maintainer merge | + | maintainer acceptance is a costly, human signal |
+| Correctly reported **FAILED on a canary** | + | proves the harness actually runs what it signs |
+| Unchecked attestation | **zero** | claims alone must earn nothing, or spam farms standing |
+| Spot-check divergence / canary rubber-stamp | **catastrophic −, effectively permanent** | the fraud proof is portable; every consumer can honor it |
+
+Two dampeners keep it honest:
+
+- **Repo weighting.** Standing earned in a repo is weighted by that repo's
+  own standing (age, distinct-maintainer activity, whether *its* attestations
+  survive checks). Recursive, PageRank-shaped — kills self-owned repo farms
+  where an attacker merges their own attested PRs all day.
+- **Independence discount.** Corroboration between identities that
+  persistently co-attest the same trees is discounted toward zero; agreement
+  only counts to the extent the agreeing parties look independent (different
+  repos, different times, no mutual-corroboration cliques).
+
+Plus **decay**: standing is a leaky bucket. A clean 2019 has little bearing on
+2026; sustained honest activity is the only way to stay cheap to merge.
+
+### 13.3 Consumption: standing → spot-check rate
+
+The §7.1 tiers become thresholds over standing, set per-repo in the contract:
+
+```toml
+[policy.standing]
+# score → sampling
+tiers = [
+  { min = 0.0,  spot_check = 1.00 },   # unknown: every claim re-run
+  { min = 0.4,  spot_check = 0.25 },
+  { min = 0.7,  spot_check = 0.05 },
+  { min = 0.95, spot_check = 0.01 },   # long clean history
+]
+# which standing computations this repo honors, and at what weight
+imports = [
+  { scope = "self", weight = 1.0 },              # earned in this repo
+  { scope = "global-rekor", weight = 0.5 },      # earned anywhere, discounted
+]
+```
+
+Portability is **local policy, web-of-trust style**: a maintainer chooses
+whether external standing counts and how much. Default posture: your own
+repo's history at full weight, the global log at a discount, fraud proofs
+honored from anywhere at full weight. Nobody is forced to trust anyone else's
+math — but since the function is public and deterministic, honoring someone
+else's computation is just choosing their inputs.
+
+### 13.4 The harness axis (advisory today, load-bearing later)
+
+Standing attaches to the human/account identity — the entity that controls
+keys and answers for fraud. The harness (`runner.harness` in the predicate)
+is self-reported and forgeable, so harness-level reputation can only be
+**advisory**: an aggregate "attestations produced by Claude Code 2.x survive
+spot-checks at rate r" statistic, usable as a weak prior for brand-new
+identities, never as a substitute for checks.
+
+The upgrade path: **harness vendor countersignatures**. If the harness vendor
+(Anthropic, OpenAI, …) countersigns attestations produced by unmodified
+builds of their harness — the App Attest pattern applied to coding agents —
+harness identity becomes cryptographically load-bearing, and a new user
+running a reputable harness could start above T0. That requires vendor
+participation and integrity-attestation of the harness itself; the predicate
+field and the DSSE envelope's multi-signature support already leave room for
+it. **Gap: no harness vendor ships this today.**
+
+### 13.5 Attacks on standing itself
+
+| Attack | Countered by |
+|---|---|
+| Farm score on self-owned repos | repo weighting (recursive, maintainer-diversity term) |
+| Collusion ring mutual corroboration | independence discount; corroboration is the weakest earner anyway |
+| Build standing honestly, then burn it on one poisoned PR | standing only lowers *test* re-verification, never review (§9 last row); catastrophic slash makes the burned identity unrecoverable — the attack costs its whole history for one shot |
+| Buy/steal a high-standing account | key rotation events and dormancy discontinuities lower standing; decay limits the loot |
+| Sybil wash-trading spot-checks | earning requires *someone else's* verified compute (spot-checks, maintainer merges) — externally rate-limited by design |
+
 ---
 
 **Gap: quantitative deterrence.** (No data exists yet.) The right spot-check
-rate per tier and the real base rate of fraudulent attestation are unknown
-until someone runs this. The MVP should log everything needed to tune them.
+rate per tier, the real base rate of fraudulent attestation, and the standing
+function's constants (weights, decay half-life, independence metric) are
+unknown until someone runs this. The MVP should log everything needed to tune
+them.
