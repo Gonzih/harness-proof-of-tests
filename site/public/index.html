@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PoT — Harness-Signed Proof of Testing</title>
+<meta name="description" content="An open protocol concept: AI harnesses run your test suite on their compute and attach a verifiable, signed, transparency-logged proof to the PR. Maintainers verify in milliseconds and pay for zero CI.">
+<style>
+  :root {
+    --bg: #faf9f6;
+    --bg-alt: #f1efe9;
+    --fg: #1c1b18;
+    --muted: #6b675e;
+    --line: #dedacf;
+    --accent: #0d6e5f;
+    --accent-fg: #ffffff;
+    --code-bg: #edeae2;
+    --warn: #9a4a00;
+    --card: #ffffff;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14130f;
+      --bg-alt: #1b1a15;
+      --fg: #e8e5dc;
+      --muted: #9b968a;
+      --line: #2e2c24;
+      --accent: #3ecfb2;
+      --accent-fg: #0c211c;
+      --code-bg: #211f18;
+      --warn: #e8a35c;
+      --card: #1b1a15;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 46rem; margin: 0 auto; padding: 0 1.25rem 6rem; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  h1, h2, h3 { line-height: 1.2; letter-spacing: -0.015em; }
+  h2 { font-size: 1.55rem; margin: 3.2rem 0 0.8rem; }
+  h3 { font-size: 1.1rem; margin: 1.8rem 0 0.4rem; }
+  p { margin: 0.8rem 0; }
+  code, pre {
+    font: 0.86em/1.55 ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--code-bg);
+    border-radius: 4px;
+  }
+  code { padding: 0.1em 0.35em; }
+  pre { padding: 1rem 1.2rem; overflow-x: auto; }
+  pre code { padding: 0; background: none; }
+  .hero { padding: 5rem 0 1rem; }
+  .hero h1 { font-size: 2.6rem; margin: 0 0 0.4rem; }
+  .kicker {
+    font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--accent); font-weight: 600; margin-bottom: 1.2rem;
+  }
+  .lede { font-size: 1.22rem; color: var(--muted); max-width: 42rem; }
+  .cta-row { display: flex; gap: 0.7rem; flex-wrap: wrap; margin: 1.8rem 0 0; }
+  .btn {
+    display: inline-block; padding: 0.55rem 1.1rem; border-radius: 8px;
+    text-decoration: none; font-weight: 600; font-size: 0.95rem;
+    border: 1px solid var(--line);
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+  .btn.ghost { color: var(--fg); }
+  .oneliner {
+    margin: 3rem 0 0; padding: 1.2rem 1.4rem; border-left: 3px solid var(--accent);
+    background: var(--bg-alt); border-radius: 0 8px 8px 0; font-size: 1.05rem;
+  }
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 1.5rem 0; }
+  .steps li {
+    counter-increment: step; position: relative; padding: 0 0 1.5rem 3.2rem;
+    border-left: 1px solid var(--line); margin-left: 1.05rem;
+  }
+  .steps li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  .steps li::before {
+    content: counter(step); position: absolute; left: -1.1rem; top: -0.1rem;
+    width: 2.1rem; height: 2.1rem; border-radius: 50%;
+    background: var(--accent); color: var(--accent-fg);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.95rem;
+  }
+  .steps h3 { margin: 0 0 0.3rem; }
+  .steps p { margin: 0.3rem 0; color: var(--muted); }
+  .steps p strong, .steps p code { color: var(--fg); }
+  .ladder { display: grid; gap: 0.6rem; margin: 1.5rem 0; }
+  .rung {
+    display: grid; grid-template-columns: 5.2rem 1fr; gap: 1rem;
+    padding: 0.9rem 1.1rem; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); align-items: baseline;
+  }
+  .rung b { font-size: 1rem; color: var(--accent); white-space: nowrap; }
+  .rung span { color: var(--muted); font-size: 0.95rem; }
+  .rung span strong { color: var(--fg); }
+  .tablewrap { overflow-x: auto; margin: 1.5rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .note { color: var(--muted); font-size: 0.92rem; }
+  .warnbox {
+    border: 1px solid var(--line); border-left: 3px solid var(--warn);
+    border-radius: 0 8px 8px 0; padding: 0.9rem 1.2rem; margin: 1.5rem 0;
+    background: var(--bg-alt); font-size: 0.97rem;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 1.5rem 0; }
+  @media (max-width: 40rem) { .grid2 { grid-template-columns: 1fr; } .hero h1 { font-size: 2.1rem; } }
+  .card {
+    border: 1px solid var(--line); border-radius: 10px; padding: 1rem 1.2rem;
+    background: var(--card);
+  }
+  .card h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+  .card p { margin: 0; color: var(--muted); font-size: 0.93rem; }
+  footer {
+    margin-top: 4.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 0.9rem;
+  }
+  .contrib-list { padding-left: 1.2rem; }
+  .contrib-list li { margin: 0.45rem 0; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="hero">
+  <div class="kicker">Concept &amp; request for contributions</div>
+  <h1>Proof of Testing</h1>
+  <p class="lede">A protocol for open-source maintainers to stop paying for CI on contributors' PRs. The contributor's AI harness runs <em>your</em> test suite on <em>their</em> compute and attaches a verifiable, signed, publicly logged proof that it was green. You verify in milliseconds.</p>
+  <div class="cta-row">
+    <a class="btn primary" href="https://github.com/Gonzih/harness-proof-of-tests">Read the spec on GitHub</a>
+    <a class="btn ghost" href="https://github.com/Gonzih/harness-proof-of-tests/issues">Open an issue</a>
+  </div>
+</div>
+
+<div class="oneliner">
+  <strong>The honest one-liner:</strong> you cannot cryptographically prove execution on a stranger's laptop with today's hardware — but you can make a false "tests passed" claim <strong>falsifiable</strong>, <strong>publicly attributable</strong>, and <strong>economically irrational</strong>. Which is what CI trust already rests on.
+</div>
+
+<h2>The problem</h2>
+<p>AI harnesses are flooding open source with PRs. curl killed its bug bounty over submission slop; Jazzband shut down; GitHub is publicly weighing per-repo PR kill switches. Maintainers are being asked to spend CI money and review time on changes nobody has provably tested.</p>
+<p>Meanwhile every AI coding agent <em>already runs your tests</em> — it has to, to know its patch works. The green run exists. It's just thrown away instead of being turned into evidence. PoT is the protocol for keeping it.</p>
+
+<h2>What is actually provable</h2>
+<p>Three research findings constrain every honest design in this space:</p>
+<div class="grid2">
+  <div class="card"><h3>Signatures prove who, never what</h3><p>DSSE + Sigstore + Rekor give a non-repudiable, identity-bound, timestamped claim. Nothing in any signature proves the test process executed.</p></div>
+  <div class="card"><h3>Consumer hardware can't attest workloads</h3><p>SGX is gone from consumer chips, Apple exposes nothing, TPMs see boot state not userspace. zk-proving a real suite is 10⁴–10⁶× overhead with no syscall support.</p></div>
+  <div class="card"><h3>"Tests passed" is a cache entry</h3><p>Bazel adjudicated this exact problem: an input-addressed action-cache entry is unverifiable from the value alone. Their answer was trusted infra. Ours is different.</p></div>
+  <div class="card"><h3>So: don't chase impossible proof</h3><p>Make lying falsifiable (determinism), attributable (identity + transparency log), and irrational (spot checks + reputation). Reproducible-builds logic, applied to tests.</p></div>
+</div>
+
+<h2>How it works</h2>
+<ol class="steps">
+  <li>
+    <h3>The repo defines a test contract</h3>
+    <p>You commit <code>.pot/contract.toml</code>: exact command, runner container pinned <strong>by image digest</strong>, network off, determinism level. It lives <strong>inside the git tree being attested</strong> — swapping in a weaker contract changes the hash under review.</p>
+  </li>
+  <li>
+    <h3>The harness runs it hermetically and builds a Merkle transcript</h3>
+    <p>Final run in the pinned container, stripped env, no network. Structured results become a canonical sorted list of <code>(test_id, status)</code>, hashed into a <strong>Merkle tree</strong> — so any single test's result can later be checked against the signed root without re-running the suite.</p>
+  </li>
+  <li>
+    <h3>The claim is signed by a real identity, in public</h3>
+    <p>Standard in-toto Statement in a DSSE envelope. Subject = <strong>git tree hash</strong> (not the diff — the exact resulting code state). Signed keylessly via Sigstore: OIDC login as the contributor's GitHub account → ephemeral Fulcio cert → signature logged in <strong>Rekor</strong>, a public append-only transparency log. No key management; no backdating; no denying it later.</p>
+  </li>
+  <li>
+    <h3>The maintainer verifies in milliseconds</h3>
+    <p>Six pure computations: signature valid → identity acceptable → attested tree == PR head → contract digest matches the contract in that tree → Rekor timestamp fresh → zero failures. <strong>No test execution. No CI bill.</strong></p>
+  </li>
+  <li>
+    <h3>Truth is enforced, not assumed</h3>
+    <p><strong>Random spot-checks</strong> — re-run a random Merkle shard; rate scales with the identity's track record (new accounts: 100%). <strong>Cross-submitter agreement</strong> — independent attestations of the same tree corroborate each other for free; divergence is an automatic alarm that bisects to one test. <strong>Canaries</strong> — occasional branches with a deliberately failing test; anyone attesting them green just published proof they sign without running.</p>
+  </li>
+</ol>
+
+<h2>Why the economics hold</h2>
+<p>An AI harness must run the tests anyway to iterate — honesty costs one extra containerized run plus a signature. Cheating means forging claims against a system built to eventually catch you, where getting caught produces a <strong>portable, signed, transparency-logged confession</strong> tied to a GitHub identity forever. The identity's standing is the stake; no tokens, no blockchain beyond the existing public logs. Protocols win when the incentive gradient points the right way, not when lying is impossible.</p>
+
+<h2>The trust ladder</h2>
+<div class="ladder">
+  <div class="rung"><b>PoT-0</b><span><strong>Claimed.</strong> Well-formed signed attestation, verifiable identity, Rekor-logged. Attribution only — already better than "tests pass 👍".</span></div>
+  <div class="rung"><b>PoT-1</b><span><strong>Contracted.</strong> Hermetic pinned run + contract binding + Merkle transcript. The claim is now falsifiable by any re-run.</span></div>
+  <div class="rung"><b>PoT-2</b><span><strong>Checked.</strong> Active enforcement: tiered spot-checks, canaries, cross-submitter log. Probably true, with quantifiable assurance.</span></div>
+  <div class="rung"><b>PoT-3</b><span><strong>Attested execution.</strong> Run in a TEE (Intel TDX / AMD SEV-SNP / Nitro) with a reproducibly built runner image; hardware quote + in-enclave-signed verdict. Cryptographic proof, contributor-paid, ~cents per run.</span></div>
+  <div class="rung"><b>PoT-4</b><span><strong>Proven (future).</strong> zkVM proof of the run — no trusted party at all. Architecturally blocked today; the ladder's defined top as proving costs fall.</span></div>
+</div>
+<p class="note">Same attestation format at every rung — a repo tightens its requirement with one line of policy, no redesign.</p>
+
+<h2>Threat model, condensed</h2>
+<div class="tablewrap">
+<table>
+  <tr><th>Attack</th><th>Countered by</th></tr>
+  <tr><td>Fabricate "green" without running</td><td>Falsifiability + spot-checks + canaries; permanent attributable fraud proof</td></tr>
+  <tr><td>Run a weakened suite / wrong command</td><td>Contract digest lives inside the attested tree; command &amp; image matched verbatim</td></tr>
+  <tr><td>Attest a stale or different tree</td><td>Subject = tree hash checked against PR head; Rekor freshness window</td></tr>
+  <tr><td>Cherry-pick a lucky flaky run</td><td>Maintainer-controlled quarantine list; divergence on any other test = alarm</td></tr>
+  <tr><td>Sybil fresh identities</td><td>New identities are spot-checked at 100% until they earn a history</td></tr>
+  <tr><td>Backdate / deny a claim</td><td>Append-only Rekor log; optional OpenTimestamps anchor</td></tr>
+</table>
+</div>
+<div class="warnbox"><strong>Out of scope, on purpose:</strong> malicious code with genuinely green tests. PoT proves "the contract ran green" — never "the code is good." It replaces the CI bill, not code review. Review stays; it just stops being a free CI service for strangers.</div>
+
+<h2>Merge flow</h2>
+<pre><code>contributor harness          maintainer
+──────────────────           ──────────
+pot run          ───────▶    pot verify        (milliseconds, no CI)
+  hermetic run                 signature ✓  identity ✓  tree==head ✓
+  merkle transcript            contract ✓  fresh ✓  all green ✓
+  sign via Sigstore
+  log to Rekor       ┌────▶  human review      (judgment, not CI babysitting)
+  attach to PR ──────┘
+                             merge queue re-attests the merged tree
+                             └─ main becomes a chain of proven tree hashes</code></pre>
+
+<h2>This is a request for contributions</h2>
+<p>Everything above is a concept backed by three research briefs (attestation ecosystem, trusted execution &amp; verifiable compute, trust models &amp; prior art) — all in the repo. Every component ships today: cosign, Rekor, in-toto's existing <code>test-result</code> predicate, OCI digests. The <em>composition</em> does not exist. Trustix, the nearest blueprint, is dormant. That's the gap.</p>
+<p>Where help is wanted:</p>
+<ul class="contrib-list">
+  <li><strong>Poke holes in the threat model.</strong> Especially the flaky-test surface and Sybil economics. Adversarial reviews are the most valuable PR right now.</li>
+  <li><strong>The <code>pot</code> CLI MVP</strong> — <code>run</code> / <code>verify</code> / <code>spot-check</code> as a single static binary over cosign + Rekor. Spec is in <code>CONCEPT.md §10</code>.</li>
+  <li><strong>Transcript canonicalization</strong> per test framework (pytest, cargo test, go test, jest…) — the boring part that decides whether determinism level "status" works in the wild.</li>
+  <li><strong>Harness integrations</strong> — a Claude Code / Codex hook: "repo has <code>.pot/</code> → run <code>pot run</code> before opening the PR."</li>
+  <li><strong>Quantitative deterrence.</strong> Nobody knows the right spot-check rates or the real base rate of fraudulent attestation. Modeling, simulation, or just instrumented reality — all wanted.</li>
+  <li><strong>PoT-3 runner image</strong> — reproducible TEE runner for TDX/Nitro with in-enclave verdict signing.</li>
+</ul>
+<div class="cta-row">
+  <a class="btn primary" href="https://github.com/Gonzih/harness-proof-of-tests">github.com/Gonzih/harness-proof-of-tests</a>
+  <a class="btn ghost" href="https://github.com/Gonzih/harness-proof-of-tests/issues/new">Start an argument</a>
+</div>
+
+<footer>
+  PoT — Harness-Signed Proof of Testing. Concept, 2026. Research and spec in the
+  <a href="https://github.com/Gonzih/harness-proof-of-tests">repo</a>;
+  issues and PRs welcome. No tokens, no chain, no foundation — just a protocol
+  that wants to exist.
+</footer>
+
+</main>
+</body>
+</html>

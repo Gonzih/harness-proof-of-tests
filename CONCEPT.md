@@ -330,6 +330,64 @@ Smallest thing that works end-to-end, all off-the-shelf:
 - No requirement for exotic hardware at PoT-0..2; the upgrade path to
   hardware proof (PoT-3) is contributor-opt-in.
 
+## 12. Soundness analysis
+
+"Cryptographically sound" = every claim a verifier accepts reduces to either a
+hardness assumption or a *named* trusted party, with no unexamined gaps.
+Decompose the PoT claim into five sub-claims:
+
+### Sound today, given strict implementation
+
+1. **"About exactly this code."** Subject = git tree hash; the contract's
+   *full closure* digested (contract file, image digest, lockfiles). Any
+   dangling reference — an image by tag, a dep fetched at runtime — is a hole:
+   the attested input must be fully determined by the hash. Hermeticity is
+   what makes the input digest complete, not just a determinism trick.
+2. **"Transcript untampered."** Canonical byte encoding (sorted,
+   length-prefixed; hash bytes, never "the JSON") and Merkle **domain
+   separation** — distinct leaf/node prefixes (CT's `0x00`/`0x01`), else
+   second-preimage attacks can present an internal node as a fake leaf.
+   Reduces to SHA-256.
+3. **"Identity X made this claim."** DSSE signatures over PAE (kills
+   payload-type confusion), Fulcio cert binds the ephemeral key to an OIDC
+   identity. Reduction chain: ECDSA → Fulcio issuance honesty → GitHub OIDC
+   honesty. Named trusted parties: Sigstore CA + GitHub-as-IdP — not
+   removable, but watchable (monitors over Rekor).
+4. **"Existed at time T, undeniable."** Verify the Rekor **inclusion proof
+   against a signed tree head** (not just "an entry exists") and that signing
+   happened inside the short-lived cert window. Remaining weakness:
+   split-view; fix with witness-cosigned tree heads, optionally an
+   OpenTimestamps anchor of the head into Bitcoin as a trust-nobody floor.
+
+With 1–4 strict, this is sound, full stop: *"GitHub identity X asserted, at
+time T, irrevocably and publicly, that tree A produces transcript root R under
+contract C."* Forging it means breaking the hash/signature or corrupting
+Fulcio/GitHub in a monitor-visible way.
+
+### The unsound link, and the three known ways to close it
+
+5. **"R is what tree A actually produces."** No signature can carry this —
+   a signature proves key possession, never computation. Exactly three
+   constructions exist:
+
+   - **Trusted hardware (PoT-3)** — sound relative to a chip vendor, buildable
+     now. TEE quote of a **reproducibly built** runner image; verdict-signing
+     key generated *inside* the enclave, its pubkey in the quote's
+     report-data; maintainer nonce in the quote (anti-replay). Reduces to:
+     vendor silicon/microcode honest, no side channel. Check the quote's TCB/
+     microcode versions against the vendor's current baseline, not just the
+     signature — TEE assumptions degrade with each published attack.
+   - **zk proofs (PoT-4)** — sound relative to math alone, no trusted party.
+     Verifies in ms; proving 10^4–10^6x native, no syscalls. Not practical
+     for real suites yet; the ladder's defined top.
+   - **Verification games (≈PoT-2)** — bisection disputes + re-execution of
+     one step; sound under an *economic* assumption (≥1 honest challenger,
+     deterministic replay). Rigorous game theory, but deterrence, not
+     cryptography.
+
+   PoT's job is to keep these interchangeable behind the same attestation
+   format, so a repo tightens its requirement with one line of policy.
+
 ---
 
 **Gap: quantitative deterrence.** (No data exists yet.) The right spot-check

@@ -1,5 +1,8 @@
 # harness-proof-of-tests
 
+**Site: <https://pot.maksim.sh>** · Contributions wanted — see
+[CONTRIBUTING.md](CONTRIBUTING.md), issues and PRs open.
+
 **Problem:** you maintain an open-source project. AI harnesses (and humans)
 send you PRs. You don't want to pay for CI or re-run their tests — you want a
 verifiable proof, attached to the PR, that *your* test suite was run against
