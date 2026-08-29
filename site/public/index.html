@@ -240,16 +240,16 @@ pot run          ───────▶    pot verify        (milliseconds, no
                              merge queue re-attests the merged tree
                              └─ main becomes a chain of proven tree hashes</code></pre>
 
-<h2>Build it with us</h2>
-<p>Three research briefs and a full spec live in the repo. Every component ships today — cosign, Rekor, in-toto's <code>test-result</code> predicate, OCI digests. The composition doesn't exist. Trustix, the nearest blueprint, is dormant. This is the gap, and it's open.</p>
-<ul class="contrib-list">
-  <li><strong>Attack the threat model.</strong> Flaky-test surface, Sybil economics, standing-function gaming. Adversarial reviews outrank code right now.</li>
-  <li><strong>The <code>pot</code> CLI</strong> — <code>run</code> / <code>verify</code> / <code>spot-check</code>, one static binary over cosign + Rekor. Spec: <code>CONCEPT.md §10</code>.</li>
-  <li><strong>Transcript canonicalization</strong> per framework — pytest, cargo test, go test, jest. This decides whether determinism level "status" holds in the wild.</li>
-  <li><strong>Harness integrations</strong> — Claude Code / Codex hooks: repo has <code>.pot/</code> → run <code>pot run</code> before the PR opens.</li>
-  <li><strong>The standing function</strong> — weights, decay, independence metrics. Model it, simulate it, or instrument reality.</li>
-  <li><strong>PoT-3 runner</strong> — reproducible TEE image for TDX/Nitro with in-enclave verdict signing.</li>
-</ul>
+<h2>Build it</h2>
+<p>Every component ships today — cosign, Rekor, in-toto, OCI digests. The composition doesn't exist. That's the gap.</p>
+<div class="grid2">
+  <div class="card"><h3>Attack it</h3><p>Flaky tests, Sybil economics, standing-function gaming. Attacks outrank code.</p></div>
+  <div class="card"><h3>The <code>pot</code> CLI</h3><p><code>run</code> / <code>verify</code> / <code>spot-check</code>. One static binary over cosign + Rekor.</p></div>
+  <div class="card"><h3>Transcripts</h3><p>Canonical results for pytest, cargo, go, jest. Determinism lives or dies here.</p></div>
+  <div class="card"><h3>Harness hooks</h3><p>Claude Code / Codex: see <code>.pot/</code> → run <code>pot run</code> before the PR opens.</p></div>
+  <div class="card"><h3>The standing function</h3><p>Weights, decay, independence. Model it or measure it.</p></div>
+  <div class="card"><h3>PoT-3 runner</h3><p>Reproducible TEE image, in-enclave verdict signing.</p></div>
+</div>
 <div class="cta-row">
   <a class="btn primary" href="https://github.com/Gonzih/harness-proof-of-tests">github.com/Gonzih/harness-proof-of-tests</a>
   <a class="btn ghost" href="https://github.com/Gonzih/harness-proof-of-tests/issues/new">Start an argument</a>
