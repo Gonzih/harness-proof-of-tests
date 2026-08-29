@@ -506,6 +506,79 @@ it. **Gap: no harness vendor ships this today.**
 | Buy/steal a high-standing account | key rotation events and dormancy discontinuities lower standing; decay limits the loot |
 | Sybil wash-trading spot-checks | earning requires *someone else's* verified compute (spot-checks, maintainer merges) — externally rate-limited by design |
 
+## 14. Consensus: verification mining
+
+Standing (§13) creates the currency. This section defines how it's mined —
+and what kind of consensus PoT actually is.
+
+### 14.1 Verification is permissionless work
+
+Anyone can pick any claim from the public log, re-run its `(tree, contract)`
+in the pinned container, and publish a **verification attestation**: same
+subject, their own transcript root, their own signature, into the same log.
+
+- **Match** → corroboration. The original claim gains confirmation weight;
+  the verifier earns standing.
+- **Divergence** → dispute. The Merkle trees bisect the disagreement to
+  individual tests; targeted re-runs settle it. The loser — false claimant or
+  false challenger — takes the catastrophic slash. Finding a real lie pays a
+  **jackpot**: far more standing than a confirmation.
+
+This is the cold-start solution: a zero-standing identity can't get cheap
+merges yet, but it can mine — re-executing others' claims is useful work that
+requires nothing but compute and honesty. Hash-power is replaced by **useful
+test execution**; stake is replaced by **identity history**. Proof-of-useful-
+work with no token: the reward is cheaper future merges.
+
+### 14.2 The consensus rule
+
+A claim is **confirmed at weight W** where W = Σ standing of *independent*
+(§13.2 independence discount) verifiers whose roots match. Repos set the
+threshold in policy:
+
+```toml
+[policy.consensus]
+# merge eligibility: claimant standing OR confirmation weight
+min_confirmation_weight = 1.5
+# fresh trees in the merge queue: commit-reveal round among k verifiers
+merge_queue_verifiers = 2
+```
+
+Not Nakamoto consensus: there is no global state machine, no fork choice, no
+longest chain. Each claim independently accumulates confirmation weight —
+rebuilder-network corroboration with standing-weighted votes. And it is
+**advisory consensus**: it prices verification for the maintainer; it never
+overrides them. The 51%-style attack (accumulate majority standing in a
+repo's verifier set) therefore buys influence over a *recommendation* —
+repo-local trust policy (§13.3 imports) decides whose standing counts, and
+the maintainer keeps sovereignty.
+
+### 14.3 The free-rider attack, and why mining stays honest
+
+The central attack on any corroboration scheme: **mirror mining** — copy the
+claimed root, sign "confirmed," burn zero compute. Three defenses, layered:
+
+1. **Forced errors (Truebit's move).** The protocol continuously publishes
+   bait: claims over real trees with deliberately wrong roots, signed by
+   throwaway or maintainer identities. Confirming bait = proof of mirror
+   mining = catastrophic slash. Bait is indistinguishable from real claims
+   without actually running the tests — so the only safe mining strategy is
+   the honest one.
+2. **Jackpot asymmetry.** Catching a real divergence pays a multiple of what
+   a confirmation pays. Actually running has positive expected value over
+   copying even before slash risk.
+3. **Commit-reveal in merge queues.** For fresh trees, k verifiers commit
+   `H(root ‖ nonce)` before any root is revealed, then reveal. Nothing to
+   copy.
+
+### 14.4 What mining does NOT cover
+
+Human review is not mechanically falsifiable — there is no root hash for "I
+read this carefully." Review earns standing only through the maintainer-merge
+event (§13.2), never through the mining path. Mining rewards exclusively
+re-executable work. Keeping that line hard is what keeps the score honest:
+every mined point traces to a computation someone else can repeat.
+
 ---
 
 **Gap: quantitative deterrence.** (No data exists yet.) The right spot-check
